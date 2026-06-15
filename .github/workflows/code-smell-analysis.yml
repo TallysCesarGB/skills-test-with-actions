@@ -32,7 +32,7 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          coverage run --source=src --omit=src/bad_code.py,src/good_code.py,src/god_code.py -m pytest tests/
+          coverage run --source=src --omit=src/bad_code.py --omit=src/good_code.py --omit=src/god_code.py -m pytest tests/
           coverage report --fail-under=90
 
   detect-code-smells:
@@ -40,6 +40,7 @@ jobs:
     needs: coverage
     permissions:
       contents: read
+      models: read
       pull-requests: write
 
     steps:
@@ -50,7 +51,8 @@ jobs:
         id: inference
         uses: actions/ai-inference@v1
         with:
-          model: meta/Meta-Llama-3.1-70B-Instruct
+          model: meta/Llama-3.3-70B-Instruct
+          max-completion-tokens: 1500
           prompt-file: './prompts/code_smell_prompt.txt'
 
       - name: Print AI Analysis Result
