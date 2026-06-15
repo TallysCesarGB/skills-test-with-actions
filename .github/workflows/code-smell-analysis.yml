@@ -49,7 +49,7 @@ jobs:
         uses: actions/ai-inference@v1
         with:
           model: openai/gpt-4.1-mini
-          max-completion-tokens: 3500
+          max-completion-tokens: 16000
           prompt-file: './prompts/code_smell_prompt.txt'
 
       - name: Print AI Analysis Result
@@ -80,24 +80,49 @@ jobs:
               body: report
             });
 
+      - name: Debug AI response
+        run: |
+          echo "========== AI RESPONSE =========="
+          cat ai_response.md
+          echo ""
+          echo "========== END RESPONSE =========="
+
       - name: Evaluate CI/CD quality gate
         run: |
           python3 - <<'PYEOF'
-          import re, json, sys
+          import re
+          import json
+          import sys
 
-          with open("ai_response.md") as f:
+          with open("ai_response.md", "r", encoding="utf-8") as f:
               content = f.read()
 
-          match = re.search(r"```json\s*(\{.*?\})\s*```", content, re.DOTALL)
-          if not match:
-              print("⚠️  Could not find JSON gate summary block in AI response.")
-              print("Failing the gate as a safe default.")
+          json_content = None
+
+          # Procura por um bloco ```json
+          match = re.search(
+              r"```json\s*(\{.*?\})\s*```",
+              content,
+              re.DOTALL
+          )
+
+          if match:
+              json_content = match.group(1)
+
+          if not json_content:
+              print("⚠️ Could not find JSON gate summary block.")
+              print("Response received:")
+              print("--------------------------------")
+              print(content[:1000])
+              print("--------------------------------")
               sys.exit(1)
 
           try:
-              data = json.loads(match.group(1))
+              data = json.loads(json_content)
           except json.JSONDecodeError as e:
-              print(f"⚠️  Failed to parse JSON gate summary: {e}")
+              print(f"⚠️ Failed to parse JSON gate summary: {e}")
+              print("JSON found:")
+              print(json_content)
               sys.exit(1)
 
           severity = data.get("by_severity", {})
@@ -105,7 +130,7 @@ jobs:
           blocking = data.get("blocking_findings", [])
 
           print("==========================================")
-          print("           QUALITY GATE SUMMARY          ")
+          print("           QUALITY GATE SUMMARY")
           print("==========================================")
           print(f"Critical: {severity.get('critical', 0)}")
           print(f"High:     {severity.get('high', 0)}")
@@ -116,10 +141,17 @@ jobs:
           if blocking:
               print("\nBlocking findings:")
               for item in blocking:
-                  print(f"  - [{item.get('severity')}] {item.get('smell')} ({item.get('location')})")
+                  print(
+                      f"  - [{item.get('severity')}] "
+                      f"{item.get('smell')} "
+                      f"({item.get('location')})"
+                  )
 
           if gate_status == "FAIL":
-              print("\n❌ Code quality gate FAILED - Critical/High/Medium severity issues found.")
+              print(
+                  "\n❌ Code quality gate FAILED - "
+                  "Critical/High/Medium severity issues found."
+              )
               sys.exit(1)
 
           print("\n✅ Code quality gate PASSED.")
