@@ -1,5 +1,4 @@
 name: Code Smell Detection with AI
-
 on:
   pull_request:
     branches:
@@ -17,7 +16,6 @@ on:
 jobs:
   coverage:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -42,7 +40,6 @@ jobs:
       contents: read
       models: read
       pull-requests: write
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -51,8 +48,8 @@ jobs:
         id: inference
         uses: actions/ai-inference@v1
         with:
-          model: meta/Llama-3.3-70B-Instruct
-          max-completion-tokens: 1500
+          model: openai/gpt-4.1-mini
+          max-completion-tokens: 3500
           prompt-file: './prompts/code_smell_prompt.txt'
 
       - name: Print AI Analysis Result
@@ -62,16 +59,68 @@ jobs:
           echo "=========================================="
           echo "${{ steps.inference.outputs.response }}"
 
+      - name: Save AI response to file
+        env:
+          AI_RESPONSE: ${{ steps.inference.outputs.response }}
+        run: |
+          printf '%s\n' "$AI_RESPONSE" > ai_response.md
+
       - name: Comment analysis on Pull Request
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
-            const report = `## 🔍 AI Code Smell Analysis Report\n\n${{ steps.inference.outputs.response }}\n\n---\n> Generated automatically by [AI Inference Action](https://github.com/marketplace/actions/ai-inference)`;
-
+            const fs = require('fs');
+            const response = fs.readFileSync('ai_response.md', 'utf8');
+            const report = `## 🔍 AI Code Smell Analysis Report\n\n${response}\n\n---\n> Generated automatically by [AI Inference Action](https://github.com/marketplace/actions/ai-inference)`;
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: report
             });
+
+      - name: Evaluate CI/CD quality gate
+        run: |
+          python3 - <<'PYEOF'
+          import re, json, sys
+
+          with open("ai_response.md") as f:
+              content = f.read()
+
+          match = re.search(r"```json\s*(\{.*?\})\s*```", content, re.DOTALL)
+          if not match:
+              print("⚠️  Could not find JSON gate summary block in AI response.")
+              print("Failing the gate as a safe default.")
+              sys.exit(1)
+
+          try:
+              data = json.loads(match.group(1))
+          except json.JSONDecodeError as e:
+              print(f"⚠️  Failed to parse JSON gate summary: {e}")
+              sys.exit(1)
+
+          severity = data.get("by_severity", {})
+          gate_status = data.get("gate_status", "FAIL")
+          blocking = data.get("blocking_findings", [])
+
+          print("==========================================")
+          print("           QUALITY GATE SUMMARY          ")
+          print("==========================================")
+          print(f"Critical: {severity.get('critical', 0)}")
+          print(f"High:     {severity.get('high', 0)}")
+          print(f"Medium:   {severity.get('medium', 0)}")
+          print(f"Low:      {severity.get('low', 0)}")
+          print(f"Gate status: {gate_status}")
+
+          if blocking:
+              print("\nBlocking findings:")
+              for item in blocking:
+                  print(f"  - [{item.get('severity')}] {item.get('smell')} ({item.get('location')})")
+
+          if gate_status == "FAIL":
+              print("\n❌ Code quality gate FAILED - Critical/High/Medium severity issues found.")
+              sys.exit(1)
+
+          print("\n✅ Code quality gate PASSED.")
+          PYEOF

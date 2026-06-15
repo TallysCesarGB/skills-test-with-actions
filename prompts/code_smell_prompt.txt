@@ -91,6 +91,36 @@ For each file, group findings under a header with the file path. For each smell 
 ### 4. Positive Observations (optional)
 - Briefly note any well-applied patterns or good practices found, to give balanced feedback
 
+### 5. CI/CD Gate Summary
+Output the following JSON block as the LAST element of the report, wrapped in a 
+````json fenced code block, with no additional text after it:
+
+```json
+{
+  "total_smells": <int>,
+  "by_severity": {
+    "critical": <int>,
+    "high": <int>,
+    "medium": <int>,
+    "low": <int>
+  },
+  "gate_status": "<PASS|FAIL>",
+  "blocking_findings": [
+    {
+      "severity": "<Critical|High|Medium>",
+      "smell": "<smell name>",
+      "location": "<file:line or class/method>"
+    }
+  ]
+}
+```
+
+Rules for this block:
+- Set "gate_status" to "FAIL" if ANY finding has severity Critical, High, or Medium.
+- Set "gate_status" to "PASS" only if all findings are Low severity or no findings exist.
+- "blocking_findings" must list every Critical/High/Medium finding (empty array if PASS).
+- This JSON block must be valid, parseable JSON with no trailing commas or comments.
+
 ## GUIDELINES
 - Be objective, technical, and specific — avoid generic advice not grounded in the actual code
 - Do not flag a smell if the code size/context makes it a non-issue (e.g., a short 
@@ -110,5 +140,5 @@ FILES TO ANALYZE:
 ---
 EXPECTED OUTPUT: A structured report following the format above, with an executive 
 summary, per-file smell analysis (including severity, violated principles, suggested 
-design patterns, and remediation steps), cross-cutting observations, and a 
-prioritized refactoring roadmap.
+design patterns, and remediation steps), cross-cutting observations, a prioritized 
+refactoring roadmap, and a final JSON gate summary block as specified in section 5.
