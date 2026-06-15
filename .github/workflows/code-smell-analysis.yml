@@ -49,14 +49,9 @@ jobs:
         uses: actions/ai-inference@v1
         with:
           model: openai/gpt-4.1-mini
-          max-completion-tokens: 32700
+          max-completion-tokens: 32768
           prompt-file: './prompts/code_smell_prompt.txt'
-
-      - name: Save AI response to file
-        env:
-          AI_RESPONSE: ${{ steps.inference.outputs.response }}
-        run: |
-          printf '%s\n' "$AI_RESPONSE" > ai_response.md
+          response-file: ai_response.md 
 
       - name: Print AI Analysis Result
         run: |
@@ -110,20 +105,22 @@ jobs:
               json_content = match.group(1)
 
           if not json_content:
-              print("⚠️ Could not find JSON gate summary block.")
-              print("Response received:")
-              print("--------------------------------")
-              print(content[:1000])
-              print("--------------------------------")
-              sys.exit(1)
+            print("⚠️ JSON block not found. Assuming gate FAILED.")
+            data = {
+                "total_smells": 0,
+                "by_severity": {"critical": 1, "high": 0, "medium": 0, "low": 0},
+                "gate_status": "FAIL",
+                "blocking_findings": [{"severity": "Critical", "smell": "Missing AI report JSON", "location": "N/A"}]
+            }
 
-          try:
-              data = json.loads(json_content)
-          except json.JSONDecodeError as e:
-              print(f"⚠️ Failed to parse JSON gate summary: {e}")
-              print("JSON found:")
-              print(json_content)
-              sys.exit(1)
+          else:
+            try:
+                data = json.loads(json_content)
+            except json.JSONDecodeError as e:
+                print(f"⚠️ Failed to parse JSON gate summary: {e}")
+                print("JSON found:")
+                print(json_content)
+                sys.exit(1)
 
           severity = data.get("by_severity", {})
           gate_status = data.get("gate_status", "FAIL")
