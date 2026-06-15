@@ -49,7 +49,7 @@ jobs:
         uses: actions/ai-inference@v1
         with:
           model: openai/gpt-4.1-mini
-          max-completion-tokens: 16000
+          max-completion-tokens: 32700
           prompt-file: './prompts/code_smell_prompt.txt'
 
       - name: Save AI response to file
