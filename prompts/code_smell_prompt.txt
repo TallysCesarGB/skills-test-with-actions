@@ -1,0 +1,117 @@
+You are a senior software engineer specialized in code quality, SOLID principles, and design patterns.
+
+Analyze the Python source files provided below and identify code smells. Focus on the following categories:
+
+1. **Long Method** – methods that are too long or do too many things
+2. **Duplicated Code** – identical or very similar logic repeated in multiple places
+3. **Large Class / God Object** – classes that accumulate too many responsibilities (violates SRP)
+4. **Data Clumps** – groups of data that always appear together but are never encapsulated in an object
+5. **Refused Bequest** – subclasses that inherit methods only to raise NotImplementedError or ignore them (violates LSP)
+6. **Feature Envy** – methods that seem more interested in the data of another class than their own
+
+For each smell found, provide:
+- **Smell name**
+- **Location** (class/method/line reference)
+- **Description** of the problem
+- **SOLID principle violated** (if applicable)
+- **Suggested fix** (brief)
+
+Be objective and technical. Format the output as a clear, structured report.
+
+---
+
+FILES TO ANALYZE:
+
+=== src/bad_code.py ===
+
+class Person:
+    def __init__(self, name, cpf):
+        self.name = name
+        self.cpf = cpf
+
+    def generate_report(self):
+        print("Generic report")
+
+class Customer(Person):
+    def generate_report(self):
+        raise NotImplementedError("Customer should not generate reports")
+
+class ReportService:
+    def print_customer(self, customer):
+        print(customer.name)
+        print(customer.cpf)
+
+    def validate_customer(self, customer):
+        print(customer.name)
+        print(customer.cpf)
+
+    def export_customer(self, customer):
+        print(customer.name)
+        print(customer.cpf)
+
+class Order:
+    def process_order(self, name, cpf, email, phone, street, number, city, state, items, payment_type):
+        total = 0
+        for item in items:
+            total += item["price"] * item["quantity"]
+
+        # cálculo repetido
+        total2 = 0
+        for item in items:
+            total2 += item["price"] * item["quantity"]
+
+        if payment_type == "PIX":
+            print("Pagamento PIX")
+        elif payment_type == "CARD":
+            print("Pagamento Cartão")
+        elif payment_type == "BOLETO":
+            print("Pagamento Boleto")
+
+        print(name)
+        print(cpf)
+        print(email)
+        print(phone)
+        print(street)
+        print(number)
+        print(city)
+        print(state)
+
+        self.send_email(email, total)
+        self.generate_invoice(name, cpf, total)
+        self.update_inventory(items)
+        self.register_audit(name, total)
+        self.generate_financial_report(total)
+        self.save_history(name, total)
+        self.notify_shipping(name)
+
+    def send_email(self, email, total):
+        print("Email enviado")
+
+    def generate_invoice(self, name, cpf, total):
+        print("NF gerada")
+
+    def update_inventory(self, items):
+        print("Estoque atualizado")
+
+    def register_audit(self, name, total):
+        print("Auditoria registrada")
+
+    def generate_financial_report(self, total):
+        print("Relatório financeiro")
+
+    def save_history(self, name, total):
+        print("Histórico salvo")
+
+    def notify_shipping(self, name):
+        print("Transportadora notificada")
+
+=== src/god_code.py ===
+
+(same Order class as bad_code.py – this file represents the God Object pattern,
+where one class is responsible for payment processing, email, invoicing, inventory,
+audit, financial reporting, order history, and shipping notification)
+
+---
+
+Expected output: a structured code smell report listing every issue found,
+the SOLID principle it violates, and a brief remediation suggestion.
