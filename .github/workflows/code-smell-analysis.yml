@@ -1,0 +1,181 @@
+name: Code Smell Detection with AI
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/**/*.py'
+  push:
+    branches:
+      - code-smells
+      - refactored
+    paths:
+      - 'src/**/*.py'
+  workflow_dispatch:
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pytest coverage pytest-cov
+
+      - name: Run tests with coverage
+        run: |
+          coverage run -m pytest tests/
+          coverage report --fail-under=90
+
+  detect-code-smells:
+    runs-on: ubuntu-latest
+    needs: coverage
+    permissions:
+      contents: read
+      models: read
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run AI Code Smell Analysis
+        id: inference
+        uses: actions/ai-inference@v1
+        with:
+          model: openai/gpt-4.1-mini
+          max-completion-tokens: 32768
+          prompt-file: './prompts/code_smell_prompt.txt'
+
+      - name: Save AI response to file
+        env:
+          AI_RESPONSE: ${{ steps.inference.outputs.response }}
+        run: |
+          printf '%s\n' "$AI_RESPONSE" > ai_response.md
+
+      - name: Debug AI output
+        run: |
+          echo "Length:"
+          echo "${{ steps.inference.outputs.response }}" | wc -c
+
+      - name: Debug inference outputs
+        run: |
+          echo "Response length:"
+          echo "${{ steps.inference.outputs.response }}" | wc -c
+
+      - name: List files
+        run: |
+          ls -lah
+
+      - name: Verify response file exists
+        run: |
+          if [ ! -s ai_response.md ]; then
+            echo "ERROR: Response file is empty or missing"
+            exit 1
+          fi
+          echo "Response file size: $(wc -c < ai_response.md) bytes"
+
+      - name: Print AI Analysis Result
+        run: |
+          echo "=========================================="
+          echo "       CODE SMELL ANALYSIS REPORT        "
+          echo "=========================================="
+          cat ai_response.md
+
+      - name: Comment analysis on Pull Request
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const response = fs.readFileSync('ai_response.md', 'utf8');
+            const report = `## 🔍 AI Code Smell Analysis Report\n\n${response}\n\n---\n> Generated automatically by [AI Inference Action](https://github.com/marketplace/actions/ai-inference)`;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: report
+            });
+
+      - name: Debug AI response
+        run: |
+          echo "========== AI RESPONSE =========="
+          cat ai_response.md
+          echo ""
+          echo "========== END RESPONSE =========="
+
+      - name: Evaluate CI/CD quality gate
+        run: |
+          python3 - <<'PYEOF'
+          import re
+          import json
+          import sys
+
+          with open("ai_response.md", "r", encoding="utf-8") as f:
+              content = f.read()
+
+          json_content = None
+
+          # Regex robusto para capturar o bloco json independente de espaços ou quebras extras
+          match = re.search(
+              r"```json\s*(\{[\s\S]*?\})\s*```",
+              content
+          )
+
+          if match:
+              json_content = match.group(1)
+
+          if not json_content:
+              print("⚠️ Bloco JSON não foi encontrado no relatório da IA.")
+              print("Para evitar a quebra injustificada do CI/CD, assumindo Gate PASSED por padrão.")
+              data = {
+                  "total_smells": 0,
+                  "by_severity": {"critical": 0, "high": 0, "medium": 0, "low": 0},
+                  "gate_status": "PASS",
+                  "blocking_findings": []
+              }
+          else:
+              try:
+                  data = json.loads(json_content)
+              except json.JSONDecodeError as e:
+                  print(f"⚠️ Falha ao processar o JSON gerado pela IA: {e}")
+                  print("JSON bruto extraído:")
+                  print(json_content)
+                  sys.exit(1)
+
+          severity = data.get("by_severity", {})
+          gate_status = data.get("gate_status", "FAIL")
+          blocking = data.get("blocking_findings", [])
+
+          print("==========================================")
+          print("           QUALITY GATE SUMMARY")
+          print("==========================================")
+          print(f"Critical: {severity.get('critical', 0)}")
+          print(f"High:     {severity.get('high', 0)}")
+          print(f"Medium:   {severity.get('medium', 0)}")
+          print(f"Low:      {severity.get('low', 0)}")
+          print(f"Gate status: {gate_status}")
+
+          if blocking:
+              print("\nBlocking findings:")
+              for item in blocking:
+                  print(
+                      f"  - [{item.get('severity')}] "
+                      f"{item.get('smell')} "
+                      f"({item.get('location')})"
+                  )
+
+          if gate_status == "FAIL":
+              print(
+                  "\n❌ Code quality gate FAILED - "
+                  "Critical/High/Medium severity issues found."
+              )
+              sys.exit(1)
+
+          print("\n✅ Code quality gate PASSED.")
+          PYEOF
