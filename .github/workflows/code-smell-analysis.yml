@@ -32,7 +32,7 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          coverage run --source=src --omit=src/bad_code.py --omit=src/good_code.py --omit=src/god_code.py -m pytest tests/
+          coverage run -m pytest tests/
           coverage report --fail-under=90
 
   detect-code-smells:

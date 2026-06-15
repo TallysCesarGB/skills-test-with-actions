@@ -1,2 +1,7 @@
 [run]
+source = src
+omit = 
+    src/bad_code.py
+    src/good_code.py
+    src/god_code.py
 relative_files = True
