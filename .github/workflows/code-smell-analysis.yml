@@ -52,18 +52,18 @@ jobs:
           max-completion-tokens: 16000
           prompt-file: './prompts/code_smell_prompt.txt'
 
-      - name: Print AI Analysis Result
-        run: |
-          echo "=========================================="
-          echo "       CODE SMELL ANALYSIS REPORT        "
-          echo "=========================================="
-          echo "${{ steps.inference.outputs.response }}"
-
       - name: Save AI response to file
         env:
           AI_RESPONSE: ${{ steps.inference.outputs.response }}
         run: |
           printf '%s\n' "$AI_RESPONSE" > ai_response.md
+
+      - name: Print AI Analysis Result
+        run: |
+          echo "=========================================="
+          echo "       CODE SMELL ANALYSIS REPORT        "
+          echo "=========================================="
+          cat ai_response.md
 
       - name: Comment analysis on Pull Request
         if: github.event_name == 'pull_request'
