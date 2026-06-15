@@ -51,7 +51,15 @@ jobs:
           model: openai/gpt-4.1-mini
           max-completion-tokens: 32768
           prompt-file: './prompts/code_smell_prompt.txt'
-          response-file: ai_response.md 
+          response-file: ai_response.md
+
+      - name: Verify response file exists
+        run: |
+          if [ ! -s ai_response.md ]; then
+            echo "ERROR: Response file is empty or missing"
+            exit 1
+          fi
+          echo "Response file size: $(wc -c < ai_response.md) bytes"
 
       - name: Print AI Analysis Result
         run: |
