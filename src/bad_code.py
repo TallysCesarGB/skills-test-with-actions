@@ -50,7 +50,6 @@ class Order:
         for item in items:
             total += item["price"] * item["quantity"]
 
-        # cálculo repetido
         total2 = 0
 
         for item in items:
