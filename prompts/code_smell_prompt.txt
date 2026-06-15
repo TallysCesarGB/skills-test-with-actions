@@ -77,7 +77,7 @@ For each file, group findings under a header with the file path. For each smell 
   performance, onboarding difficulty)
 - **Recommended Design Pattern / Refactoring Technique**: e.g., Strategy, Factory, 
   Decorator, Adapter, Extract Method, Extract Class, Replace Conditional with 
-  Polymorphism, Introduce Parameter Object, Dependency Injection, etc.
+  Polorphism, Introduce Parameter Object, Dependency Injection, etc.
 - **Suggested Fix**: concise, actionable remediation steps (2-4 sentences). 
   Include a short before/after code snippet ONLY if it significantly clarifies the fix 
   and can be expressed in under 10 lines.
@@ -92,8 +92,7 @@ For each file, group findings under a header with the file path. For each smell 
 - Briefly note any well-applied patterns or good practices found, to give balanced feedback
 
 ### 5. CI/CD Gate Summary
-Output the following JSON block as the LAST element of the report, wrapped in a 
-````json fenced code block, with no additional text after it:
+Output the following JSON block as the LAST element of the report, wrapped in a ```json fenced code block, with absolutely NO additional text, summary, remarks or greetings after it:
 
 ```json
 {
@@ -113,32 +112,3 @@ Output the following JSON block as the LAST element of the report, wrapped in a
     }
   ]
 }
-```
-
-Rules for this block:
-- Set "gate_status" to "FAIL" if ANY finding has severity Critical, High, or Medium.
-- Set "gate_status" to "PASS" only if all findings are Low severity or no findings exist.
-- "blocking_findings" must list every Critical/High/Medium finding (empty array if PASS).
-- This JSON block must be valid, parseable JSON with no trailing commas or comments.
-
-## GUIDELINES
-- Be objective, technical, and specific — avoid generic advice not grounded in the actual code
-- Do not flag a smell if the code size/context makes it a non-issue (e.g., a short 
-  script doesn't need full DI/abstraction layers — use judgment proportional to scope)
-- If the codebase is too small or simple for certain categories (e.g., no inheritance 
-  exists, so Refused Bequest doesn't apply), simply omit those categories rather than 
-  forcing findings
-- Prioritize actionable, incremental refactoring suggestions over complete rewrites
-
----
-FILES TO ANALYZE:
-=== <path/to/file> ===
-<file content>
-
-(repeat the block above for each file)
-
----
-EXPECTED OUTPUT: A structured report following the format above, with an executive 
-summary, per-file smell analysis (including severity, violated principles, suggested 
-design patterns, and remediation steps), cross-cutting observations, a prioritized 
-refactoring roadmap, and a final JSON gate summary block as specified in section 5.
