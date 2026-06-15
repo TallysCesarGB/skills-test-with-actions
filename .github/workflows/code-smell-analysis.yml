@@ -51,7 +51,26 @@ jobs:
           model: openai/gpt-4.1-mini
           max-completion-tokens: 32768
           prompt-file: './prompts/code_smell_prompt.txt'
-          response-file: ai_response.md
+
+      - name: Save AI response to file
+        env:
+          AI_RESPONSE: ${{ steps.inference.outputs.response }}
+        run: |
+          printf '%s\n' "$AI_RESPONSE" > ai_response.md
+
+      - name: Debug AI output
+        run: |
+          echo "Length:"
+          echo "${{ steps.inference.outputs.response }}" | wc -c
+
+      - name: Debug inference outputs
+        run: |
+          echo "Response length:"
+          echo "${{ steps.inference.outputs.response }}" | wc -c
+
+      - name: List files
+        run: |
+          ls -lah
 
       - name: Verify response file exists
         run: |
